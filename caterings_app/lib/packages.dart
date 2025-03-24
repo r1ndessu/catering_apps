@@ -49,19 +49,68 @@ class _AdminPanelState extends State<AdminPanel> {
   }
 
   void addPackage() {
-    if (packageController.text.isNotEmpty && priceController.text.isNotEmpty) {
-      setState(() {
-        packageBox.add({
-          'name': packageController.text,
-          'price': priceController.text,
-          'inclusions': List<String>.from(inclusions)
-        });
+  if (packageController.text.isNotEmpty && priceController.text.isNotEmpty) {
+    setState(() {
+      packageBox.add({
+        'name': packageController.text,
+        'price': priceController.text,
+        'inclusions': List<String>.from(inclusions)
       });
-      packageController.clear();
-      priceController.clear();
-      inclusions.clear();
-    }
+    });
+    packageController.clear();
+    priceController.clear();
+    inclusions.clear();
+
+    // Show success dialog
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 100),
+              SizedBox(height: 20),
+              Text(
+                'Adding Package',
+                style: TextStyle(fontSize: 18, color: Colors.green),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Successfully!',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  'OK',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
+}
+
 
   void deletePackage(int index) {
     setState(() {
@@ -87,55 +136,107 @@ class _AdminPanelState extends State<AdminPanel> {
     return Padding(
       padding: EdgeInsets.all(16.0),
       child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+        'Adding Package:',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Colors.orange,
+        ),
+        ),
+        SizedBox(height: 20),
+        TextField(
+        controller: packageController,
+        decoration: InputDecoration(
+          hintText: 'Enter Package Name',
+          border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        ),
+        SizedBox(height: 10),
+        TextField(
+        controller: priceController,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          hintText: 'Enter Package Price',
+          border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        ),
+        SizedBox(height: 10),
+        Row(
         children: [
-          TextField(
-            controller: packageController,
+          Expanded(
+          child: TextField(
+            controller: inclusionController,
             decoration: InputDecoration(
-              labelText: 'Enter Package Name',
-              border: OutlineInputBorder(),
+            hintText: 'Enter Inclusion',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            filled: true,
+            fillColor: Colors.white,
             ),
           ),
-          SizedBox(height: 10),
-          TextField(
-            controller: priceController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Enter Package Price',
-              border: OutlineInputBorder(),
-            ),
           ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: inclusionController,
-                  decoration: InputDecoration(
-                    labelText: 'Enter Inclusion',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: addInclusion,
-                child: Icon(Icons.add, color: Colors.white),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-              ),
-            ],
-          ),
-          Wrap(
-            children: inclusions.map((inclusion) => Chip(
-              label: Text(inclusion),
-              deleteIcon: Icon(Icons.close),
-              onDeleted: () => setState(() => inclusions.remove(inclusion)),
-            )).toList(),
-          ),
-          SizedBox(height: 10),
+          SizedBox(width: 10),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade200),
-            onPressed: addPackage,
-            child: Text('Add Package', style: TextStyle(color: Colors.white)),
+          onPressed: addInclusion,
+          child: Icon(Icons.add, color: Colors.white),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange,
+            shape: CircleBorder(),
+            padding: EdgeInsets.all(16),
+          ),
+          ),
+        ],
+        ),
+        SizedBox(height: 10),
+        Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: inclusions.map((inclusion) {
+          return Chip(
+          label: Text(inclusion),
+          deleteIcon: Icon(Icons.close),
+          onDeleted: () => setState(() => inclusions.remove(inclusion)),
+          backgroundColor: Colors.orange.shade100,
+          );
+        }).toList(),
+        ),
+        SizedBox(height: 20),
+        Center(
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange,
+          padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          ),
+          onPressed: addPackage,
+          child: Text(
+          'Add Package',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+        ),
+        ),
+          SizedBox(height: 20),
+          Divider(),
+          Text(
+            'Your Packages:',
+            style: TextStyle(
+              fontSize: 24,
+              color: Colors.orange,
+            ),
           ),
           SizedBox(height: 20),
           Expanded(
@@ -145,13 +246,22 @@ class _AdminPanelState extends State<AdminPanel> {
                 var package = packageBox.getAt(index);
                 return Card(
                   elevation: 5,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
                   child: ListTile(
                     title: Text(
                       '${package['name']} - \$${package['price']}',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
                     ),
-                    subtitle: Text('Inclusions: ${(package['inclusions'] as List).join(', ')}'),
+                    subtitle: Text(
+                      'Inclusions: ${(package['inclusions'] as List).join(', ')}',
+                      style: TextStyle(color: Colors.black54),
+                    ),
                     trailing: IconButton(
                       icon: Icon(Icons.delete, color: Colors.red),
                       onPressed: () => deletePackage(index),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:caterings_app/book.dart';
+import 'package:caterings_app/cashiering.dart';
 import 'package:caterings_app/packages.dart';
 import 'package:caterings_app/orders.dart';
 import 'package:caterings_app/sales.dart';
@@ -64,7 +64,7 @@ class HomeScreen extends StatelessWidget {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => BookPackageScreen()),
+                          MaterialPageRoute(builder: (context) => CashieringScreen()),
                         );
                       },
                     ),

@@ -12,7 +12,8 @@ class _SalesScreenState extends State<SalesScreen> {
   double totalEarnings = 0;
   int totalOrders = 0;
   int totalSales = 0;
-  String selectedFilter = 'Daily';
+  DateTime? fromDate;
+  DateTime? toDate;
   Map<String, int> packageSales = {};
 
   @override
@@ -21,28 +22,42 @@ class _SalesScreenState extends State<SalesScreen> {
     fetchDashboardData();
   }
 
+  DateTime? parseCustomDate(String dateString) {
+    try {
+      // Fixing invalid date format issues
+      dateString = dateString.replaceAll(' ', 'T').replaceAll('PM', ' PM').replaceAll('AM', ' AM');
+      return DateTime.tryParse(dateString);
+    } catch (e) {
+      print('Date format error: $e');
+      return null;
+    }
+  }
+
   Future<void> fetchDashboardData() async {
-    var box = await Hive.openBox('bookings');
-    DateTime now = DateTime.now();
+    var trackOrdersBox = await Hive.openBox('trackOrders');
     Map<String, int> salesCount = {};
 
     setState(() {
-      totalOrders = box.length;
-      totalEarnings = box.values.fold(0.0, (sum, booking) => sum + (double.tryParse(booking['price'].toString()) ?? 0.0));
+      totalOrders = trackOrdersBox.length;
+      totalEarnings = trackOrdersBox.values.fold(
+          0.0, (sum, booking) => sum + (double.tryParse(booking['total'].toString()) ?? 0.0));
 
-      if (selectedFilter == 'Daily') {
-        totalSales = box.values.where((booking) => booking['status'] == 'Done' && DateTime.parse(booking['date']).day == now.day).length;
-      } else if (selectedFilter == 'Weekly') {
-        totalSales = box.values.where((booking) => booking['status'] == 'Done' && now.difference(DateTime.parse(booking['date'])).inDays <= 7).length;
-      } else if (selectedFilter == 'Monthly') {
-        totalSales = box.values.where((booking) => booking['status'] == 'Done' && DateTime.parse(booking['date']).month == now.month).length;
-      }
+      totalSales = trackOrdersBox.values
+    .where((booking) {
+      DateTime? bookingDate = parseCustomDate(booking['dateTime']);
+      return booking['status'] == 'Completed' &&
+          bookingDate != null &&
+          (fromDate == null || !bookingDate.isBefore(fromDate!)) &&
+          (toDate == null || !bookingDate.isAfter(toDate!));
+    })
+    .length;
 
       // Count sales for each package
-      for (var booking in box.values) {
-        if (booking['status'] == 'Done') {
-          String packageName = booking['package'];
-          salesCount[packageName] = (salesCount[packageName] ?? 0) + 1;
+      for (var booking in trackOrdersBox.values) {
+        if (booking['status'] == 'Completed') {
+          for (var packageName in booking['packages']) {
+            salesCount[packageName] = (salesCount[packageName] ?? 0) + 1;
+          }
         }
       }
       packageSales = salesCount;
@@ -70,36 +85,51 @@ class _SalesScreenState extends State<SalesScreen> {
             children: [
               const Text('Dashboard', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
               const SizedBox(height: 26),
-
-              dashboardCard('Total Earnings', totalEarnings.toStringAsFixed(2), Colors.blue, Icons.attach_money_outlined, () {}),
+              dashboardCard('Total Earnings', totalEarnings.toStringAsFixed(2), Colors.blue, Icons.attach_money_outlined),
               const SizedBox(height: 16),
-              dashboardCard('Total Orders', totalOrders.toString(), Colors.green, Icons.shopping_bag, () {}),
+              dashboardCard('Total Orders', totalOrders.toString(), Colors.green, Icons.shopping_bag),
               const SizedBox(height: 16),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Total Sales', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  DropdownButton<String>(
-                    value: selectedFilter,
-                    items: ['Daily', 'Weekly', 'Monthly'].map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (newValue) {
-                      setState(() {
-                        selectedFilter = newValue!;
-                        fetchDashboardData();
-                      });
+                  const Text('From:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  TextButton(
+                    onPressed: () async {
+                      DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: fromDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now());
+                      if (picked != null) {
+                        setState(() {
+                          fromDate = picked;
+                          fetchDashboardData();
+                        });
+                      }
                     },
+                    child: Text(fromDate == null ? 'Select Date' : '${fromDate!.toLocal()}'.split(' ')[0]),
+                  ),
+                  const Text('To:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  TextButton(
+                    onPressed: () async {
+                      DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: toDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now());
+                      if (picked != null) {
+                        setState(() {
+                          toDate = picked;
+                          fetchDashboardData();
+                        });
+                      }
+                    },
+                    child: Text(toDate == null ? 'Select Date' : '${toDate!.toLocal()}'.split(' ')[0]),
                   ),
                 ],
               ),
-              dashboardCard('Total Sales', totalSales.toString(), Colors.red, Icons.show_chart, () {}),
+              dashboardCard('Total Sales', totalSales.toString(), Colors.red, Icons.show_chart),
               const SizedBox(height: 16),
-
               const Text('Top Selling Packages', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               packageSales.isEmpty
@@ -118,7 +148,7 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
-  Widget dashboardCard(String title, String value, Color color, IconData icon, VoidCallback onViewFull) {
+  Widget dashboardCard(String title, String value, Color color, IconData icon) {
     return Card(
       color: color,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),

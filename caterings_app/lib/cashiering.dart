@@ -85,177 +85,186 @@ class _CashieringScreenState extends State<CashieringScreen> {
       'dateTime': dateTime,
       'total': total,
       'packages': cartPackages.map((p) => p['name']).toList(),
-      'status': 'Completed'
+      'status': 'Pending' // Default status
     });
   }
 
   void completeTransaction() {
-    TextEditingController nameController = TextEditingController();
-    TextEditingController suggestionController = TextEditingController();
-    TextEditingController moneyController = TextEditingController();
+  if (cart.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Please add at least one package to the cart before proceeding.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
 
-    DateTime selectedDate = DateTime.now();
-    TimeOfDay selectedTime = TimeOfDay.now();
+  TextEditingController nameController = TextEditingController();
+  TextEditingController suggestionController = TextEditingController();
+  TextEditingController moneyController = TextEditingController();
 
-    showDialog(
+  DateTime selectedDate = DateTime.now();
+  TimeOfDay selectedTime = TimeOfDay.now();
+
+  showDialog(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
-      title: Center(
-        child: Text(
-        'Complete Transaction',
-        style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+        title: Center(
+          child: Text(
+            'Complete Transaction',
+            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+          ),
         ),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-          controller: nameController,
-          decoration: InputDecoration(
-            labelText: 'Customer Name',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Customer Name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                      onPressed: () async {
+                        DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now().subtract(Duration(days: 365)),
+                          lastDate: DateTime.now().add(Duration(days: 365)),
+                        );
+                        if (pickedDate != null) {
+                          setState(() => selectedDate = pickedDate);
+                        }
+                      },
+                      child: Text(
+                        'Pick up Date: ${selectedDate.toLocal().toString().split(' ')[0]}',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                      onPressed: () async {
+                        TimeOfDay? pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
+                        if (pickedTime != null) {
+                          setState(() => selectedTime = pickedTime);
+                        }
+                      },
+                      child: Text(
+                        'Pick up Time: ${selectedTime.format(context)}',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: suggestionController,
+                decoration: InputDecoration(
+                  labelText: 'Suggestion',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: moneyController,
+                decoration: InputDecoration(
+                  labelText: 'Amount Received',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Selected Package: ${cart.map((p) => '${p['name']} x${p['quantity']}').join(', ')}',
+                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 14),
+              ),
+              SizedBox(height: 5),
+              Text(
+                'Total Amount: \$${getTotalAmount().toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+            ],
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
-          SizedBox(height: 10),
-          Row(
-          children: [
-            Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8.0),
               ),
-              ),
-              onPressed: () async {
-              DateTime? pickedDate = await showDatePicker(
-                context: context,
-                initialDate: selectedDate,
-                firstDate: DateTime.now().subtract(Duration(days: 365)),
-                lastDate: DateTime.now().add(Duration(days: 365)),
-              );
-              if (pickedDate != null) {
-                setState(() => selectedDate = pickedDate);
+            ),
+            onPressed: () async {
+              double customerMoney = double.tryParse(moneyController.text) ?? 0;
+
+              if (customerMoney < getTotalAmount()) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Insufficient amount! Please enter a valid amount.')),
+                );
+                return;
               }
-              },
-              child: Text(
-              'Pick up Date: ${selectedDate.toLocal().toString().split(' ')[0]}',
-              style: TextStyle(color: Colors.white),
-              ),
-            ),
-            ),
-            SizedBox(width: 10),
-            Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              ),
-              onPressed: () async {
-              TimeOfDay? pickedTime = await showTimePicker(
-                context: context,
-                initialTime: selectedTime,
+
+              double finalTotal = getTotalAmount();
+
+              await saveTransaction(
+                cart,
+                finalTotal,
+                nameController.text,
+                '${selectedDate.toLocal().toString().split(' ')[0]} ${selectedTime.format(context)}',
+                suggestionController.text,
+                customerMoney,
               );
-              if (pickedTime != null) {
-                setState(() => selectedTime = pickedTime);
-              }
-              },
-              child: Text(
-              'Pick up Time: ${selectedTime.format(context)}',
-              style: TextStyle(color: Colors.white),
-              ),
-            ),
-            ),
-          ],
+
+              setState(() {
+                cart.clear(); // Clear the cart
+                totalPackagesAmount = 0.0; // Reset the total amount
+              });
+
+              Navigator.pop(context);
+              showSuccessDialog(finalTotal, customerMoney);
+            },
+            child: Text('Confirm', style: TextStyle(color: Colors.white)),
           ),
-          SizedBox(height: 10),
-          TextField(
-          controller: suggestionController,
-          decoration: InputDecoration(
-            labelText: 'Suggestion',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            ),
-          ),
-          ),
-          SizedBox(height: 10),
-          TextField(
-          controller: moneyController,
-          decoration: InputDecoration(
-            labelText: 'Amount Received',
-            border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            ),
-          ),
-          keyboardType: TextInputType.number,
-          ),
-          SizedBox(height: 20),
-          Text(
-          'Selected Package: ${cart.map((p) => '${p['name']} x${p['quantity']}').join(', ')}',
-          style: TextStyle(fontStyle: FontStyle.italic, fontSize: 14),
-          ),
-          SizedBox(height: 5),
-          Text(
-          'Total Amount: \$${getTotalAmount().toStringAsFixed(2)}',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-          ),
-          
         ],
-        ),
-      ),
-      actions: [
-        TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: Text('Cancel', style: TextStyle(color: Colors.grey)),
-        ),
-        ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange,
-          shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          ),
-        ),
-        onPressed: () async {
-          double customerMoney = double.tryParse(moneyController.text) ?? 0;
-
-          if (customerMoney < getTotalAmount()) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Insufficient amount! Please enter a valid amount.')),
-          );
-          return;
-          }
-
-          double finalTotal = getTotalAmount();
-
-          await saveTransaction(
-          cart,
-          finalTotal,
-          nameController.text,
-          '${selectedDate.toLocal().toString().split(' ')[0]} ${selectedTime.format(context)}',
-          suggestionController.text,
-          customerMoney,
-          );
-
-          setState(() {
-          cart.clear();
-          totalPackagesAmount = 0.0;
-          });
-
-          Navigator.pop(context);
-          showSuccessDialog(finalTotal, customerMoney);
-        },
-        child: Text('Confirm', style: TextStyle(color: Colors.white)),
-        ),
-      ],
       ),
     ),
-    );
+  );
 }
 
 void showSuccessDialog(double finalTotal, double customerMoney) {
@@ -318,7 +327,12 @@ void showSuccessDialog(double finalTotal, double customerMoney) {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              setState(() {
+                cart.clear(); // Clear the cart
+              });
+              Navigator.pop(context);
+            },
             child: Text('OK', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -329,12 +343,12 @@ void showSuccessDialog(double finalTotal, double customerMoney) {
 Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
-         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.orange, size: 30),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text('Cashiering', style: TextStyle(fontWeight: FontWeight.bold,color: Colors.orange)),
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back, color: Colors.orange, size: 30),
+        onPressed: () => Navigator.of(context).pop(),
       ),
+      title: Text('Cashiering', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+    ),
     body: Column(
       children: [
         Padding(
@@ -345,134 +359,205 @@ Widget build(BuildContext context) {
           ),
         ),
         Expanded(
+  child: packages.isEmpty
+      ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.inbox,
+                size: 100,
+                color: Colors.orange.shade200,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'No Available Package Yet!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+              Text(
+                'Please add some packages first.',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+        )
+      : ListView.builder(
+          itemCount: packages.length,
+          itemBuilder: (context, index) {
+            final package = packages[index];
+            return Card(
+              margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange.shade200, Colors.yellow.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 70,
+                        child: Icon(Icons.book_rounded, color: Colors.white, size: 50),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              package['name'] ?? 'Package',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Inclusion:',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            Wrap(
+                              spacing: 4,
+                              children: (package['inclusions'] as List<dynamic>?)
+                                      ?.map((item) => Chip(
+                                            label: Text(item, style: TextStyle(fontSize: 12, color: Colors.white)),
+                                            backgroundColor: Colors.orange,
+                                          ))
+                                      .toList() ??
+                                  [],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '\$${package['price'] is String ? double.tryParse(package['price'])?.toStringAsFixed(2) ?? '0.00' : package['price'].toStringAsFixed(2)}',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
+                          ),
+                          SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: () => addToCart(package),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              shape: CircleBorder(),
+                              padding: EdgeInsets.all(8),
+                            ),
+                            child: Icon(Icons.add, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        Divider(thickness: 1, color: const Color.fromARGB(62, 255, 153, 0)),
+        Padding(
+          padding: const EdgeInsets.all(0),
+          child: Text(
+            'Cart',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange),
+          ),
+        ),
+        AnimatedContainer(
+          duration: Duration(milliseconds: 300),
+          constraints: BoxConstraints(
+            maxHeight: cart.length > 4 ? 240 : cart.length * 80.0, // Adjust height dynamically
+          ),
           child: ListView.builder(
-            itemCount: packages.length,
+            shrinkWrap: true,
+            physics: cart.length > 4 ? ScrollPhysics() : NeverScrollableScrollPhysics(),
+            itemCount: cart.length,
             itemBuilder: (context, index) {
-              final package = packages[index];
+              final cartItem = cart[index];
               return Card(
           margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
           elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.orange.shade200, Colors.yellow.shade100],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
+          child: ListTile(
+            title: Text(
+              '${cartItem['name']} x${cartItem['quantity']}',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
-                children: [
-            Container(
-              width: 50,
-              height: 70,
-              child: Icon(Icons.book_rounded, color: const Color.fromARGB(255, 255, 255, 255), size: 50),
+            subtitle: Text(
+              '\$${((cartItem['price'] is String ? double.tryParse(cartItem['price']) ?? 0 : cartItem['price']) * cartItem['quantity']).toStringAsFixed(2)}',
+              style: TextStyle(color: Colors.green),
             ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-              package['name'] ?? 'Package',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-              'Inclusion:',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  Wrap(
-              spacing: 4,
-              children: (package['inclusions'] as List<dynamic>?)
-                ?.map((item) => Chip(
-                      label: Text(item, style: TextStyle(fontSize: 12,color: Colors.white)),
-                      backgroundColor: const Color.fromARGB(255, 255, 164, 16),
-                    ))
-                .toList() ??
-                  [],
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '\$${package['price']}',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
-                ),
-                SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () => addToCart(package),
-                  style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              shape: CircleBorder(),
-              padding: EdgeInsets.all(8),
-                  ),
-                  child: Icon(Icons.add, color: Colors.white),
-                ),
-              ],
-            ),
-                ],
-              ),
+            trailing: IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: () => removeFromCart(index),
             ),
           ),
               );
             },
           ),
         ),
+
         GestureDetector(
           onTap: completeTransaction,
           child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.orange, const Color.fromARGB(255, 255, 136, 0)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16.0),
-        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Text(
-            '${cart.length}',
-            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.orange, const Color.fromARGB(255, 255, 136, 0)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
+              borderRadius: BorderRadius.circular(12),
             ),
-            SizedBox(width: 8),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            margin: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-              Text(
-                'Complete Transaction',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              Text(
-                'Text message here',
-                style: TextStyle(fontSize: 12, color: Colors.white70),
-              ),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        '${cart.length}',
+                        style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Complete Transaction',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        Text(
+                          'Tap to proceed',
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Text(
+                  '\$${getTotalAmount().toStringAsFixed(2)}',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
               ],
             ),
-          ],
-            ),
-            Text(
-          '\$${getTotalAmount().toStringAsFixed(2)}',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: const Color.fromARGB(255, 255, 255, 255)),
-            ),
-          ],
-        ),
           ),
         ),
       ],

@@ -34,9 +34,11 @@ class _TrackOrdersScreenState extends State<TrackOrdersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Track Your Orders', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.orange,
-        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.orange, size: 30),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text('Track Orders', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
       ),
       body: Container(
         padding: EdgeInsets.all(16.0),
